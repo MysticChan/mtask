@@ -38,43 +38,6 @@ int cron_hash_check(unsigned char value, char *tab)
     return -1;
 }
 
-int cron_sec(unsigned char *value, char *tab)
-{
-    int temp;
-    char *pchar;
-    pchar = tab;
-    if(memcmp(pchar, "*", 1) == 0)
-    {
-        if(memcmp(pchar, "*/", 2) == 0)
-        {
-            sscanf(pchar, "*/%d", &temp);
-            if((temp > 60) || (temp < 0)) return -1;
-            if(*value % temp != 0) return -1;
-        }
-        return 0;
-    }
-    if(isdigit(*pchar))
-    {
-        while((*pchar != '-')&&(*pchar != ',')&&(*pchar != '\0')) pchar ++;
-        if(*pchar == '-')
-        {
-            return cron_range_check(*value, tab);
-        }
-        else if(*pchar == ',')
-        {
-            return cron_hash_check(*value, tab);
-        }
-        else 
-        {
-            sscanf(tab, "%d", &temp);
-            printf("temp = %d\n", temp);
-            if((temp > 60) || (temp < 0)) return -1;
-            if(*value == temp) return 0;
-        }
-    }
-    return -1;
-}
-
 int crontab_parse(unsigned char *value, char *tab)
 {
     int temp;
@@ -153,7 +116,7 @@ int crontab_check(char _item[6][16])
     time_t rawtime, timestamp;
     struct tm *info;
     rawtime = time(NULL);
-    for(i=0;i<604800;i++)
+    for(i=0;i<604800;i++)   // 7天时间内
     {
         timestamp = rawtime + i;
         info = localtime(&timestamp);
@@ -175,48 +138,3 @@ int crontab_check(char _item[6][16])
     }
     return 0;
 }
-
-#if 0
-char *test_tab = "* * */2 * *";
-int value;
-    char *pchar;
-    pchar = test_tab;
-    int i;
-    for(i=0;i<5;i++)
-    {
-        if(memcmp(pchar , "*", 1) == 0)
-        {
-            if(memcmp(pchar, "*/", 2) == 0)
-            {
-                sscanf(pchar, "*/%d ", &value);
-                if((value >= 60)||(value < 0)) return -1;
-                printf("%d: set */%d\n", i, value);
-            }
-            else 
-            {
-                printf("%d: set *\n", i);
-            }
-        }
-        else if(isdigit(*pchar))
-        {
-            sscanf(pchar, "%d ", &value);
-            if((value >= 60)||(value < 0)) return -1;
-            printf("%d: set %d\n", i, value);
-        }
-        while(1)
-        {
-            if(*pchar == '\0') break;
-            if(*pchar == ' ') 
-            {
-                while(*pchar == ' ') pchar ++;
-                break;
-            }
-            pchar ++;
-        }
-    }
-    if(i != 5) 
-    {
-        printf("i != 5\n");
-        return -1;
-    }
-#endif

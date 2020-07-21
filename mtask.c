@@ -5,7 +5,9 @@
 #include <time.h>
 
 mtask_t *mtask_head = NULL;
+static int active_task_list(void);
 static mtask_t *active_task_read(void);
+
 int mtask_init(void)
 {
     // time init
@@ -15,7 +17,11 @@ int mtask_init(void)
 int mtask_loop(void)
 {
     mtask_t *mtask_run;
+
+    active_task_list();
+
     mtask_run = active_task_read();
+
     if(mtask_run != NULL)
     {
         if(mtask_run->entry(mtask_run) == 0)
@@ -23,16 +29,17 @@ int mtask_loop(void)
     }
 }
 
-int mtask_active_task(const char *task_name)
+int mtask_active_task(int tid)
 {
     mtask_t *obj;
     obj = mtask_head;
     while(obj != NULL)
     {
-        if(strcmp(obj->name, task_name) == 0)
+        if(obj->tid == tid)
         {
             if(obj->status != MTASK_SLEEP) break;
             obj->status = MTASK_WAITING;
+            mtask_localtime_read(&obj->exec_time);
             return 0;
         }
         obj = obj->next;
@@ -40,14 +47,14 @@ int mtask_active_task(const char *task_name)
     return -1;
 }
 
-int mtask_register(mtask_t *target, const char *name, const char *crontab, int (*entry)(mtask_t *obj))
+int mtask_register(mtask_t *target, const char *crontab, entry_fun_t entry)
 {
     mtask_t *obj;
     int cur_id = 1;
     if(mtask_head == NULL) 
     {
         mtask_head = target;
-        target->id = cur_id;   
+        target->tid = cur_id;   
     }
     else 
     {
@@ -59,72 +66,43 @@ int mtask_register(mtask_t *target, const char *name, const char *crontab, int (
             obj = obj->next;
         }
         obj->next = target;
-        target->id = cur_id + 1;
+        target->tid = cur_id + 1;
     }
 
     target->status = MTASK_SLEEP;
     target->crontab = (char *)crontab;
     target->entry = entry;
-    memset(&target->last_exec, 0, sizeof(mtask_time_t));
+    memset(&target->exec_time, 0, sizeof(mtask_time_t));
     target->next = NULL;
     
-    return 0;
+    return target->tid;
+}
+
+static int cron_range_check(unsigned char value, char *tab)
+{
+    int min, max;
+    char *pchar = tab;
+    sscanf(tab, "%d-%d", &min, &max);
+    if(min < 0) return -1;
+    if(max < 0) return -1;
+    if((min <= value) && (max >= value)) return 0;
+    return -1;
 }
 
 static int cron_hash_check(unsigned char value, char *tab)
 {
     char *pchar;
     int temp;
-    printf("cron_hash_check: %s\n", tab);
     pchar = tab;
     while(*pchar != '\0')
     {
         if(isdigit(*pchar))
         {
             sscanf(pchar, "%d", &temp);
-            printf("cron_hash_check: temp = %d\n", temp);
             if(value == temp) return 0;
             while(isdigit(*pchar)) pchar ++;
         }
-        printf("cron_hash_check: %c\n", *pchar);
         pchar ++;
-    }
-    return -1;
-}
-
-static int cron_sec(unsigned char *value, char *tab)
-{
-    int temp;
-    char *pchar;
-    pchar = tab;
-    if(memcmp(pchar, "*", 1) == 0)
-    {
-        if(memcmp(pchar, "*/", 2) == 0)
-        {
-            sscanf(pchar, "*/%d", &temp);
-            if((temp > 60) || (temp < 0)) return -1;
-            if(*value % temp != 0) return -1;
-        }
-        return 0;
-    }
-    if(isdigit(*pchar))
-    {
-        while((*pchar != '-')&&(*pchar != ',')&&(*pchar != '\0')) pchar ++;
-        if(*pchar == '-')
-        {
-            return cron_range_check(*value, tab);
-        }
-        else if(*pchar == ',')
-        {
-            return cron_hash_check(*value, tab);
-        }
-        else 
-        {
-            sscanf(tab, "%d", &temp);
-            printf("temp = %d\n", temp);
-            if((temp > 60) || (temp < 0)) return -1;
-            if(*value == temp) return 0;
-        }
     }
     return -1;
 }
@@ -169,7 +147,6 @@ static int active_task(mtask_time_t *cur_time, char *crontab)
     char item[6][16];
     char *pitem, *ptab;
     unsigned char *pref;
-    
     ptab = crontab;
     memset(item, 0, sizeof(item));
     for(i=0;i<6;i++)
@@ -197,6 +174,7 @@ static int active_task_list(void)
     mtask_time_t cur_time;
     mtask_localtime_read(&cur_time);
     if(memcmp(&_rec_time, &cur_time, sizeof(mtask_time_t)) == 0) return -1;
+    memcpy(&_rec_time, &cur_time, sizeof(mtask_time_t));
     obj = mtask_head;
     while(obj != NULL)
     {
@@ -204,7 +182,7 @@ static int active_task_list(void)
         {
             if(active_task(&cur_time, obj->crontab) == 0)
             {
-                memcpy(obj->last_exec, &cur_time, sizeof(mtask_time_t));
+                memcpy(&obj->exec_time, &cur_time, sizeof(mtask_time_t));
                 obj->status = MTASK_WAITING;
             }
         }
@@ -216,8 +194,6 @@ static int active_task_list(void)
 static mtask_t *active_task_read(void)
 {
     mtask_t *obj, *active;
-
-    active_task_list();
 
     active = NULL;
     obj = mtask_head;

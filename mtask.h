@@ -20,10 +20,9 @@ typedef struct mtask_time_s
 typedef struct mtask_s
 {
     int tid;
-    char *name;
     enum mtask_e status;
     char *crontab;
-    mtask_time_t last_exec;
+    mtask_time_t exec_time;
     int (*entry)(struct mtask_s *task_obj);
     struct mtask_s * next;
 } mtask_t;
@@ -35,11 +34,13 @@ extern "C" {
 #endif
 
 int mtask_loop(void);
-int mtask_active_task(const char *task_name);
 
-int mtask_localtime(mtask_time_t *_time);
-unsigned int mtask_tick(void);
-unsigned int mtask_tick_elapsed(unsigned int *ts);
+int mtask_register(mtask_t *target, const char *crontab, entry_fun_t entry);
+int mtask_active_task(int tid);
+
+int mtask_localtime_read(mtask_time_t *_time);
+unsigned int mtask_ticks_read(void);
+unsigned int mtask_ticks_elapsed(unsigned int *ts);
 
 #ifdef __cplusplus
 }
