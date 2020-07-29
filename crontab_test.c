@@ -75,7 +75,7 @@ int crontab_parse(unsigned char *value, char *tab)
 int crontab_check(char _item[6][16]);
 int main(void)
 {
-    char *test = "0 * * * * *";
+    char *test = "59 59 * * * *";
     char item[6][16];
     char *pitem, *ptab;
     int i;

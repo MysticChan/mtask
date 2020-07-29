@@ -4,7 +4,7 @@
 #include <string.h>
 #include <time.h>
 
-mtask_t example_task1, example_task2;
+mtask_t example_task1, example_task2, example_task3;
 static int example_entry(mtask_t *_task)
 {
     printf("example_entry: %02d-%02d %02d:%02d:%02d\n", 
@@ -18,7 +18,7 @@ static int example_entry(mtask_t *_task)
         printf("example_entry: crontab = NULL\n");
     if(_task == &example_task1)
     {
-        if(_task->exec_time.sec % 2 == 0) mtask_active_task(example_task2.tid);
+        if(_task->exec_time.sec == 15) mtask_active_task(example_task2.tid);
     }
     return 0;
 }
@@ -27,8 +27,9 @@ int main(void)
 {
     // mtask_time_t example_time;
     // unsigned int example_tick;
-    mtask_register(&example_task1, "0 */2 * * * *", example_entry);
+    mtask_register(&example_task1, "15,45 * * * * *", example_entry);
     mtask_register(&example_task2, NULL, example_entry);
+    mtask_register(&example_task3, "*/5 * * * * *", example_entry);
     // example_tick = mtask_ticks_read();
     while(1)
     {

@@ -3,7 +3,6 @@
 enum mtask_e
 {
     MTASK_SLEEP,
-    MTASK_WAITING,
     MTASK_RUNNING
 };
 
@@ -15,12 +14,14 @@ typedef struct mtask_time_s
     unsigned char week;
     unsigned char day;
     unsigned char mon;
+    unsigned char year;
 } mtask_time_t;
 
 typedef struct mtask_s
 {
     int tid;
     enum mtask_e status;
+    int step;
     char *crontab;
     mtask_time_t exec_time;
     int (*entry)(struct mtask_s *task_obj);
